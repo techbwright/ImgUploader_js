@@ -1,9 +1,10 @@
 <script setup>
 import axios from 'axios';
-import { onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 const baseUrl = 'http://localhost:3001';
+
 const message = ref('');
-const messages = ref('');
+const messages = ref([]);
 const previewUrl = ref('');
 const previewUrls = ref([]);
 const imgUploadPath = ref('');
@@ -19,12 +20,15 @@ const onFileChangeSingle = (event) => {
 };
 
 const removeImageSingle = () => {
+  URL.revokeObjectURL(previewUrl.value);
   previewUrl.value = '';
 //Clear the file input value to allow re-uploading the same image if desired
   const fileInput = document.querySelector('input[type="file"]');
   if (fileInput) {
     fileInput.value = '';
   }
+  imgUploadPath.value = '';
+  message.value = '';
 };
 
 const upLoadSingleImage = async () => {
@@ -39,6 +43,7 @@ const upLoadSingleImage = async () => {
     });
     
     imgUploadPath.value = response.data.imageUrl;
+    message.value = `Image Uploaded To:\n${imgUploadPath.value}`;
     console.log('Upload successful');
   } 
   catch (error) {
@@ -56,14 +61,18 @@ const onFileChangeMultiple = (event) => {
 };  
 
 const removeImages = (index) => {
-  URL.revokeObjectURL(previewUrls.value[index]);
-  //previewUrls.value.splice(index, 1);
+  //FOR LOOP TO REVOKE ALL OBJECT URLS IN THE PREVIEW URLS ARRAY
+  for(let i = 0; i < previewUrls.value.length; i++){
+    URL.revokeObjectURL(previewUrls.value[i]);
+  } 
   previewUrls.value = [];
   images.value = [];
   const fileInput = document.querySelector('input[type="file"][multiple]');
   if (fileInput) {
     fileInput.value = '';
   }   
+  imgUploadPaths.value = [];  
+  messages.value = [];
 };  
 
 const uploadMultipleImages = async () => {
@@ -77,73 +86,98 @@ const uploadMultipleImages = async () => {
       }
     });
 
-    imgUploadPaths.value = response.data.imageUrls;
+    imgUploadPaths.value = response.data.imageUrls.map(path => path);
+    messages.value = `Images Uploaded To:\n${imgUploadPaths.value}`;
     console.log('Upload successful');
   } catch (error) {
     messages.value = 'Upload failed';
     console.log('Upload failed:', error);
   }
 };  
+
 onUnmounted(() => {
   // Revoke object URLs to free memory
   if (previewUrl.value) {
     URL.revokeObjectURL(previewUrl.value);
   }
   previewUrls.value.forEach(url => URL.revokeObjectURL(url));
+  
+  images.value = [];
+  imgUploadPath.value = '';
+  imgUploadPaths.value = [];  
+  message.value = '';
+  messages.value = [];
 });  
 </script>
 <template>
-  <!--Form for single image upload-->
-   <form id="formSingle" @submit.prevent="upLoadSingleImage()" style="border: 1px solid red; margin-bottom: 40px;">
-  <h2>This Form Uploads a Single Image</h2>
-      <input @change="onFileChangeSingle" type="file" name="image" accept="image/*" style="padding: 15px;" required />
-      <button type="submit" value="Upload Image" style="margin: 15px;">Upload Image</button>
-      <div>
-        
-<div v-if="previewUrl" style="display: flex; flex-direction: column; flex-wrap: wrap; gap: 10px;">
-  <p>Preview: Image To Be Uploaded</p>
-          <img :src="previewUrl" alt="Image Preview" style="max-width: 150px; margin: 15px;" /> 
-          <button @click="removeImageSingle" style="max-width: 150px; margin: 15px;">Remove Image</button>
+<!DOCTYPE html>
+<html lang="en">
+<body>
+  <div class="container">
+    
+    <!-- Form for single image upload -->
+    <form id="formSingle" @submit.prevent="upLoadSingleImage()" style="border: 2px solid red; border-radius: 25px; padding: 20px; margin-bottom: 40px;">
+      <h2 style="text-align: center;">This Form Uploads a Single Image</h2>
+      <input @change="onFileChangeSingle" type="file" name="image" accept="image/*" style="padding: 15px; width: 100%;" required />
+      <div style="text-align: center;">
+        <button type="submit" style="margin: 15px;">Upload Image</button>
       </div>
+      
+      <div v-if="previewUrl" style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <p>Preview: Image To Be Uploaded</p>
+        <img :src="previewUrl" alt="Image Preview" style="max-width: 150px;" /> 
+        <button @click="removeImageSingle" style="max-width: 150px;">Remove Image</button>
       </div>
+      <div v-if="imgUploadPath" style="white-space: pre-line; text-align: center;">
       {{ message }}
-      <div v-if="imgUploadPath">
-        <P>Path To The Uploaded Image:</P>
-        {{ imgUploadPath }}
-     <br/>
-     <img :src="`${baseUrl}${imgUploadPath}`" alt="Uploaded Image" style="max-width: 200px; margin-top: 10px;" />   
       </div>
-   </form>
+    </form>
 
-    <!--Form for multiple image upload-->
-    <form id="formMultiple" @submit.prevent="uploadMultipleImages()" style="border: 1px solid blue;">
-  <h2>This Form Uploads Multiple Images</h2>
-      <input ref="images" type="file" multiple accept="image/*" @change="onFileChangeMultiple"name="images" style="padding: 15px;" required />
-      <button type="submit" value="Upload Images" style="margin: 15px;">Upload Images</button>
-      <div>
-        <div v-if="previewUrls.length > 0">         
-          <p>Preview: Images To Be Uploaded</p>
-          <br/>
-          <div v-if="previewUrls" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+    <!-- Form for multiple image upload -->
+    <form id="formMultiple" @submit.prevent="uploadMultipleImages()" style="border: 2px solid blue; border-radius: 25px; padding: 20px;">
+      <h2 style="text-align: center;">This Form Uploads Multiple Images</h2>
+      <input ref="images" type="file" multiple accept="image/*" @change="onFileChangeMultiple" name="images" style="padding: 15px; width: 100%;" required />
+      <div style="text-align: center;">
+        <button type="submit" style="margin: 15px;">Upload Images</button>
+      </div>
+      
+      <div v-if="previewUrls.length > 0" style="text-align: center;">         
+        <p>Preview: Images To Be Uploaded</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center;">
           <div v-for="(url, index) in previewUrls" :key="index">
-            <img :src="url" alt="Image Preview" style="max-width: 150px; margin: 24px;" />
+            <img :src="url" alt="Image Preview" style="max-width: 100px; margin: 10px;" />
           </div>  
         </div>
-          <div style="display:flex; flex-direction: column; align-items: center;">
-          <button @click="removeImages(index)" style="max-width: 150px; margin: 10px;">Remove Images</button>
-          </div>
-       </div>
-       <p>{{ messages }}</p>
-      </div>  
-      <div v-if="imgUploadPaths.length > 0">
-        <p>Path To Uploaded Images: </p>
-        <p>{{ imgUploadPaths }}</p>
-     <br/>
-     <div v-if="imgUploadPaths" style="display: flex; flex-wrap: wrap; gap: 10px;">
-          <div v-for="(url, index) in imgUploadPaths" :key="index">
-            <img :src="`${baseUrl}${url}`" alt="Uploaded Image" style="max-width: 200px;" />
-          </div>
-       </div>
+        <button @click="removeImages(index)" style="margin: 10px;">Remove All</button>
       </div>
-   </form>  
+      <div v-if="imgUploadPaths.length > 0" style="white-space: pre-line;">
+<div>
+      {{ messages }}
+      </div>
+      </div>
+    </form>  
+
+  </div>
+</body>
+</html>
+
 </template>
+<style scoped>
+
+    
+    body {
+      display: flex;           
+      justify-content: center; 
+      align-items: center;     
+    }
+
+    /* Wrap the forms */
+    .container {
+      width: 640px;
+      max-width: 800px; 
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    
+    
+</style>

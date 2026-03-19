@@ -59,65 +59,39 @@ const upload = multer({ storage,
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 /*** Endpoint to handle single image uploads ***/
-app.post('/upload', upload.single('image'), (req, res) => {
-  if (err instanceof multer.MulterError) {
-              // A Multer-specific error occurred
-              return res.status(400).json({
-                  message: `Multer error: ${err.code}`,
-                  error: err.message
-              });
-          } else if (err) {
-              // A custom error from fileFilter or other general error
-              return res.status(400).json({
-                  message: 'An error occurred during file upload',
-                  error: err.message
-              });
-          }
-  
-          // If no file was uploaded despite no error (e.g. user submitted form without file)
-          if (!req.file) {
-              return res.status(400).json({ message: 'No file uploaded' });
-          }
-  
-          // Everything is fine
-          const imageUrl = `/uploads/${req.file.filename}`;
-          res.status(200).json({
-              message: 'File uploaded successfully',
-              file: req.file.filename,
-              filePath: imageUrl
-          });
-      });
-  
+app.post('/upload', (req, res) => {
+  // Use upload.single('file') or upload.array('files', 5)
+  upload.single('image')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: `Multer Error: ${err.message}` });
+    } else if (err) {
+      return res.status(400).json({ error: `Error: ${err.message}` });
+    }
+    const imgUrl = `/uploads/${req.file.filename}`;
+    console.log('File uploaded: ' + imgUrl);
+    res.status(200).json({
+      imageUrl: imgUrl
+    });
+  });
+});
+
 /*** Endpoint to handle multiple image uploads ***/
-app.post('/upload/multiple', upload.array('images', 2), (req, res) => {
-  if (err instanceof multer.MulterError) {
-              // A Multer-specific error occurred
-              return res.status(400).json({
-                  message: `Multer error: ${err.code}`,
-                  error: err.message
-              });
-          } else if (err) {
-              // A custom error from fileFilter or other general error
-              return res.status(400).json({
-                  message: 'An error occurred during file upload',
-                  error: err.message
-              });
-          }
-  
-          // If no file was uploaded despite no error (e.g. user submitted form without file)
-          if (!req.file) {
-              return res.status(400).json({ message: 'No file uploaded' });
-          }
-  
-          // Everything is fine
-          const imageUrl = `/uploads/${req.file.filename}`;
-          res.status(200).json({
-              message: 'File uploaded successfully',
-              file: req.file.filename,
-              filePath: imageUrl
-          });
-      }); 
- 
+app.post('/upload/multiple', (req, res) => {
+  // Use upload.single('file') or upload.array('files', 5)
+  upload.array('images', 2)(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: `Multer Error: ${err.message}` });
+    } else if (err) {
+      return res.status(400).json({ error: `Error: ${err.message}` });
+    }
+    const imgUrls = req.files.map(file => `/uploads/${file.filename}`);
+    console.log('Files uploaded: ' + imgUrls.join(', '));
+    res.status(200).json({
+      imageUrls: imgUrls
+    }); 
+  });
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
